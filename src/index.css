@@ -1,0 +1,61 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", serif;
+  
+  --color-brand-cream: #FDFCF8;
+  --color-brand-ink: #1A1A1A;
+  --color-brand-accent: #8E8D7A; /* Muted Olive */
+  --color-surface: #FFFFFF;
+  --color-border: rgba(0, 0, 0, 0.05);
+
+  --animate-liquid-orbit: liquid-orbit 4s linear infinite;
+  --animate-border-beam: border-beam 3s linear infinite;
+
+  @keyframes liquid-orbit {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes border-beam {
+    100% {
+      offset-distance: 100%;
+    }
+  }
+
+  @keyframes svg-beam {
+    from { stroke-dashoffset: 1; }
+    to { stroke-dashoffset: -1; }
+  }
+}
+
+@layer base {
+  .dark {
+    --color-brand-cream: #121212; /* Offblack */
+    --color-brand-ink: #FDFCF8;    /* Cream text */
+    --color-surface: #1E1E1E;     /* Slightly lighter than offblack */
+    --color-border: rgba(255, 255, 255, 0.1);
+  }
+}
+
+body {
+  @apply bg-brand-cream text-brand-ink font-sans antialiased transition-colors duration-300;
+}
+
+h1, h2, h3, h4 {
+  @apply font-serif;
+}
+
+.aesthetic-card {
+  @apply bg-surface border border-border rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-black/5 dark:hover:shadow-white/5;
+}
+
+.btn-primary {
+  @apply bg-brand-ink text-brand-cream px-8 py-3 rounded-full font-medium transition-transform active:scale-95 hover:opacity-90;
+}
+
+.btn-outline {
+  @apply border border-brand-ink px-8 py-3 rounded-full font-medium transition-all hover:bg-brand-ink hover:text-brand-cream;
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Aura Print - Custom Apparel \u0026 Mugs",
+  "description": "A premium aesthetic shop for custom printed T-shirts and coffee mugs. Upload your own designs or shop our curated collection.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
