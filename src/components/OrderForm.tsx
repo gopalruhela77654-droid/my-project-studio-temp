@@ -7,17 +7,36 @@ interface OrderFormProps {
   onClose: () => void;
   selectedMainCategory: 'Preset Design' | 'Your Design';
   mainUploadedFile: File | null;
+  customImageBase64?: string | null;
+  productColor?: string;
+  customType?: 'tshirt' | 'mug';
+  cartItems?: any[];
+  cartTotal?: number;
+  onOrderPlaced?: () => void;
 }
 
-export default function OrderForm({ onSuccess, onClose, selectedMainCategory, mainUploadedFile }: OrderFormProps) {
+export default function OrderForm({ 
+  onSuccess, 
+  onClose, 
+  selectedMainCategory, 
+  mainUploadedFile,
+  customImageBase64: customImageBase64Prop,
+  productColor,
+  customType,
+  cartItems = [],
+  cartTotal = 0,
+  onOrderPlaced
+}: OrderFormProps) {
   const [formData, setFormData] = React.useState({
     'form-name': 'order-submissions',
     'bot-field': '',
     name: '',
     whatsapp: '',
     size: 'M',
+    color: productColor || 'White',
     design: '',
     address: '',
+    quantity: 1
   });
 
   const [customDesignFile, setCustomDesignFile] = React.useState<File | null>(null);
@@ -28,6 +47,26 @@ export default function OrderForm({ onSuccess, onClose, selectedMainCategory, ma
       setCustomDesignFile(mainUploadedFile);
     }
   }, [mainUploadedFile]);
+
+  // Set default values depending on shop context
+  React.useEffect(() => {
+    let designVal = '';
+    let defaultQty = 1;
+
+    if (cartItems && cartItems.length > 0) {
+      designVal = cartItems.map(item => `${item.name} (${item.quantity}x)`).join(', ');
+      defaultQty = cartItems.reduce((acc, item) => acc + (item.quantity || 1), 0);
+    } else {
+      designVal = customType ? `Custom ${customType.charAt(0).toUpperCase() + customType.slice(1)}` : 'AURA-001 Custom Apparel';
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      design: designVal,
+      color: productColor || 'White',
+      quantity: defaultQty
+    }));
+  }, [cartItems, customType, productColor]);
 
   const [status, setStatus] = React.useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
   const [validationError, setValidationError] = React.useState<string | null>(null);
@@ -59,34 +98,55 @@ export default function OrderForm({ onSuccess, onClose, selectedMainCategory, ma
     setStatus('submitting');
     setValidationError(null);
 
+    // Read attached file in Base64 if available
+    let customImageBase64 = customImageBase64Prop || null;
+    if (customDesignFile) {
+      try {
+        customImageBase64 = await new Promise<string | null>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (ev) => resolve(ev.target?.result as string);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(customDesignFile);
+        });
+      } catch (err) {
+        console.error("Failed to read uploaded custom art file:", err);
+      }
+    }
+
     try {
+      const payload = {
+        customerName: formData.name,
+        shippingAddress: formData.address,
+        contactDetails: formData.whatsapp,
+        itemOrdered: formData.design,
+        quantity: parseInt(String(formData.quantity || 1), 10) || 1,
+        size: formData.size,
+        color: formData.color,
+        price: cartTotal > 0 ? cartTotal : (customType === 'tshirt' ? 35 : 25),
+        customImage: customImageBase64
+      };
+
       const response = await fetch('/api/place-order', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          customerName: formData.name,
-          shippingAddress: formData.address,
-          contactDetails: formData.whatsapp,
-          itemOrdered: formData.design,
-          quantity: 1
-        }),
+        body: JSON.stringify(payload)
       });
 
       const data = await response.json();
       if (data && data.success) {
         setStatus('success');
-        alert(data.message);
+        if (onOrderPlaced) {
+          onOrderPlaced();
+        }
         if (onSuccess) onSuccess();
       } else {
         setStatus('error');
-        alert("Transmission Failed: " + (data?.message || "Unknown error"));
       }
     } catch (error: any) {
       console.error("Order transmission failed:", error);
       setStatus('error');
-      alert("Transmission Failed: " + (error?.message || "Connection error."));
     }
   };
 
@@ -104,7 +164,7 @@ export default function OrderForm({ onSuccess, onClose, selectedMainCategory, ma
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
-        className="relative w-full max-w-2xl bg-gray-900 border border-gray-800 rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col text-white"
+        className="relative w-full max-w-2xl bg-gray-900 border border-gray-800 rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col text-white animate-fade-in"
       >
         <div className="p-8 md:p-12 overflow-y-auto">
           <button 
@@ -115,32 +175,17 @@ export default function OrderForm({ onSuccess, onClose, selectedMainCategory, ma
           </button>
 
           <div className="text-center mb-10">
-            <span className="text-xs font-bold tracking-[0.3em] uppercase text-cyan-500 mb-3 block font-mono">Secure Terminal</span>
-            <h2 className="text-3xl md:text-4xl font-serif mb-3">Execute Order</h2>
-            <p className="text-gray-400 max-w-sm mx-auto text-sm">Complete the parameters below to finalize your custom acquisition.</p>
+            <span className="text-xs font-bold tracking-[0.3em] uppercase text-cyan-500 mb-3 block font-mono">Design Verification Gate</span>
+            <h2 className="text-3xl md:text-4xl font-serif mb-3">Place Draft Order</h2>
+            <p className="text-gray-400 max-w-sm mx-auto text-sm">Review parameters below. Your request will be saved as a draft for store review and manual dispatch.</p>
           </div>
 
           <div className="relative">
-            {/* Quant Accents */}
-            <div className="absolute -top-12 -right-4 p-4 opacity-10 font-mono text-[10px] hidden md:block">
-              SYS_AUTH_VERIFIED // 0x4F2A
-            </div>
-
             <form 
               name="order-submissions" 
-              method="POST" 
-              data-netlify="true" 
-              data-netlify-honeypot="bot-field"
-              encType="multipart/form-data"
               onSubmit={handleSubmit}
               className="space-y-5"
             >
-              {/* Netlify Hidden Inputs */}
-              <input type="hidden" name="form-name" value="order-submissions" />
-              <p className="hidden">
-                <label>Don’t fill this out: <input name="bot-field" onChange={handleChange} /></label>
-              </p>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-1 font-mono">Full Identity</label>
@@ -150,27 +195,39 @@ export default function OrderForm({ onSuccess, onClose, selectedMainCategory, ma
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
-                    placeholder="John Doe"
+                    placeholder="Recipient Name"
                     className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 focus:outline-none focus:border-cyan-500 transition-colors font-medium text-sm text-white"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-1 font-mono">WhatsApp Protocol</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-1 font-mono">WhatsApp/Phone</label>
                   <input
                     required
                     type="tel"
                     name="whatsapp"
                     value={formData.whatsapp}
                     onChange={handleChange}
-                    placeholder="+91 00000 00000"
+                    placeholder="e.g. +91 99999 12345"
                     className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 focus:outline-none focus:border-cyan-500 transition-colors font-medium text-sm text-white"
                   />
-                  <p className="text-[9px] text-cyan-500/60 uppercase tracking-tighter ml-1 italic">For UPI Payment Confirmation</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-1 font-mono">Base Colorway</label>
+                  <select
+                    name="color"
+                    value={formData.color}
+                    onChange={handleChange}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 focus:outline-none focus:border-cyan-500 transition-colors font-medium appearance-none cursor-pointer text-sm text-white"
+                  >
+                    <option value="White">White Fabric/Ceramic</option>
+                    <option value="Black">Black Fabric/Spectra</option>
+                  </select>
+                </div>
+
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-1 font-mono">Dimension (Size)</label>
                   <select
@@ -186,37 +243,52 @@ export default function OrderForm({ onSuccess, onClose, selectedMainCategory, ma
                     <option value="XXL">XXL - Double Extra Large</option>
                   </select>
                 </div>
+              </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-1 font-mono">Design ID</label>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                <div className="md:col-span-3 space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-1 font-mono">Design ID / Content Lineup</label>
                   <input
                     required
                     type="text"
                     name="design"
                     value={formData.design}
                     onChange={handleChange}
-                    placeholder="e.g. AURA-001"
+                    placeholder="Product identification code"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 focus:outline-none focus:border-cyan-500 transition-colors font-medium text-sm text-white"
+                  />
+                </div>
+
+                <div className="md:col-span-1 space-y-1.5">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-1 font-mono">Quantity</label>
+                  <input
+                    required
+                    type="number"
+                    name="quantity"
+                    min="1"
+                    value={formData.quantity}
+                    onChange={handleChange}
                     className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 focus:outline-none focus:border-cyan-500 transition-colors font-medium text-sm text-white"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-1 font-mono">Logistics (Shipping Address)</label>
+                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-1 font-mono">Logistics Drop Address (Complete Address + Pincode)</label>
                 <textarea
                   required
                   name="address"
                   value={formData.address}
                   onChange={handleChange}
                   rows={3}
-                  placeholder="Full address with Pincode..."
+                  placeholder="Enter complete shipping address including landmarker and pin identification..."
                   className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 focus:outline-none focus:border-cyan-500 transition-colors font-medium resize-none text-sm text-white"
                 />
               </div>
 
               {selectedMainCategory === 'Your Design' && (
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-1 font-mono">Custom Design (Image)</label>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-gray-500 ml-1 font-mono">Custom Design Artwork</label>
                   <div className="relative group">
                     <input
                       type="file"
@@ -230,11 +302,11 @@ export default function OrderForm({ onSuccess, onClose, selectedMainCategory, ma
                     {customDesignFile ? (
                       <div className="flex items-center justify-between w-full bg-cyan-500/5 border border-cyan-500/30 rounded-xl px-4 py-4 backdrop-blur-md shadow-[0_0_20px_rgba(6,182,212,0.1)]">
                         <div className="flex items-center gap-4 overflow-hidden">
-                          <div className="bg-cyan-500/20 p-2.5 rounded-lg flex items-center justify-center animate-pulse">
-                            <span className="text-xl leading-none">✅</span>
+                          <div className="bg-cyan-500/20 p-2.5 rounded-lg flex items-center justify-center">
+                            <span className="text-xl leading-none">🎨</span>
                           </div>
                           <div className="flex flex-col overflow-hidden">
-                            <span className="text-[10px] text-cyan-500 font-bold uppercase tracking-[0.2em] font-mono">Design Attached // System Verified</span>
+                            <span className="text-[10px] text-cyan-500 font-bold uppercase tracking-[0.2em] font-mono">Custom Image Attached</span>
                             <span className="text-xs text-white/90 font-medium truncate max-w-[180px] font-mono opacity-60">
                               {customDesignFile.name.toUpperCase()}
                             </span>
@@ -258,8 +330,8 @@ export default function OrderForm({ onSuccess, onClose, selectedMainCategory, ma
                           <Upload size={20} className="text-gray-500 group-hover:text-cyan-500" />
                         </div>
                         <div className="text-center">
-                          <span className="text-xs font-bold uppercase tracking-widest text-gray-500 group-hover:text-white block mb-1">Initialize Upload</span>
-                          <span className="text-[9px] text-gray-600 uppercase tracking-tighter">PNG, JPG or SVG. Max 10MB.</span>
+                          <span className="text-xs font-bold uppercase tracking-widest text-gray-400 group-hover:text-white block mb-0.5">Initialize Artwork Import</span>
+                          <span className="text-[9px] text-gray-650 uppercase tracking-tighter">PNG, JPG or SVG. Max 10MB.</span>
                         </div>
                       </button>
                     )}
@@ -270,12 +342,9 @@ export default function OrderForm({ onSuccess, onClose, selectedMainCategory, ma
               {validationError && (
                 <motion.div 
                   initial={{ opacity: 0, x: -10 }}
-                  animate={{ 
-                    opacity: 1, 
-                    x: [0, -10, 10, -10, 10, 0] 
-                  }}
+                  animate={{ opacity: 1, x: [0, -10, 10, -10, 10, 0] }}
                   transition={{ duration: 0.4 }}
-                  className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs py-2 px-4 rounded-lg text-center font-bold uppercase tracking-widest"
+                  className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs py-2.5 px-4 rounded-xl text-center font-bold uppercase tracking-widest font-mono"
                 >
                   {validationError}
                 </motion.div>
@@ -284,7 +353,7 @@ export default function OrderForm({ onSuccess, onClose, selectedMainCategory, ma
               <button
                 type="submit"
                 disabled={status === 'submitting'}
-                className="w-full bg-cyan-500 text-gray-900 py-4 rounded-2xl font-bold text-base uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 mt-4"
+                className="w-full bg-cyan-500 text-gray-900 py-4 rounded-2xl font-bold text-base uppercase tracking-[0.2em] shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.5)] transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50 mt-4 cursor-pointer font-serif"
               >
                 {status === 'submitting' ? (
                   <span className="flex items-center gap-2">
@@ -292,13 +361,13 @@ export default function OrderForm({ onSuccess, onClose, selectedMainCategory, ma
                       animate={{ rotate: 360 }}
                       transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
                     >
-                      <Send size={18} />
+                      <Upload size={18} />
                     </motion.div>
-                    Processing...
+                    Saving Draft...
                   </span>
                 ) : (
                   <>
-                    Confirm Order <ArrowRight size={18} />
+                    Save Order Draft <ArrowRight size={18} />
                   </>
                 )}
               </button>
@@ -312,59 +381,29 @@ export default function OrderForm({ onSuccess, onClose, selectedMainCategory, ma
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="absolute inset-0 bg-green-600 flex flex-col items-center justify-center text-white z-50 p-8 text-center overflow-hidden"
+              className="absolute inset-0 bg-gray-950 flex flex-col items-center justify-center text-white z-50 p-8 text-center"
             >
-              {/* Floating Emojis Background */}
-              <div className="absolute inset-0 pointer-events-none">
-                {[...Array(12)].map((_, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ y: "120%", x: `${Math.random() * 100}%`, opacity: 0 }}
-                    animate={{ 
-                      y: "-20%", 
-                      opacity: [0, 1, 1, 0],
-                      rotate: [0, 10, -10, 0]
-                    }}
-                    transition={{ 
-                      duration: 3 + Math.random() * 4, 
-                      repeat: Infinity, 
-                      delay: Math.random() * 5,
-                      ease: "linear"
-                    }}
-                    className="absolute text-4xl"
-                  >
-                    {['😊', '✨', '🎉', '👕', '🔥', '💖'][Math.floor(Math.random() * 6)]}
-                  </motion.div>
-                ))}
-              </div>
-
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", damping: 12 }}
-                className="mb-6 text-white relative z-10"
+                className="mb-6 text-cyan-400"
               >
                 <CheckCircle2 size={100} strokeWidth={1.5} />
               </motion.div>
               
-              <div className="relative z-10">
-                <h3 className="text-4xl font-serif mb-4 drop-shadow-lg">Order Logged!</h3>
-                <p className="text-white/90 mb-10 max-w-xs mx-auto text-lg font-medium">
-                  We will contact you on WhatsApp for payment confirmation and final logistics.
+              <div>
+                <h3 className="text-3xl font-serif mb-4 text-cyan-400">Request Received as Draft!</h3>
+                <p className="text-gray-300 mb-10 max-w-sm mx-auto text-sm leading-relaxed">
+                  Your custom order design has been securely recorded to the database queue. You can review, modify, or manually dispatch to Qikink inside the operator cabin!
                 </p>
                 
                 <div className="flex flex-col gap-4 w-full max-w-xs mx-auto">
                   <button 
                     onClick={onClose}
-                    className="w-full bg-white text-green-600 py-4 rounded-full font-bold text-lg shadow-xl hover:scale-105 transition-transform active:scale-95"
+                    className="w-full bg-cyan-500 text-gray-950 py-4 rounded-full font-bold text-sm tracking-widest uppercase hover:scale-105 transition-transform"
                   >
-                    Shop More
-                  </button>
-                  <button 
-                    onClick={() => setStatus('idle')}
-                    className="text-white/70 text-sm font-bold uppercase tracking-widest hover:text-white transition-colors"
-                  >
-                    View Form Again
+                    Return to Shop
                   </button>
                 </div>
               </div>
@@ -381,11 +420,11 @@ export default function OrderForm({ onSuccess, onClose, selectedMainCategory, ma
               className="absolute inset-0 bg-red-950 flex flex-col items-center justify-center text-white z-50 p-8 text-center"
             >
               <X size={64} className="mb-4 text-red-500" />
-              <h3 className="text-2xl font-serif mb-2">Transmission Failed</h3>
-              <p className="text-white/70 mb-6">There was an error logging your order. Please try again.</p>
+              <h3 className="text-2xl font-serif mb-2">Failed to Save Draft</h3>
+              <p className="text-white/70 mb-6">There was an unexpected database error creating your order draft. Please reconfirm inputs.</p>
               <button 
                 onClick={() => setStatus('idle')}
-                className="px-6 py-2 border border-white/20 rounded-full hover:bg-white/10 transition-colors"
+                className="px-6 py-2 border border-white/20 hover:bg-white/10 rounded-full transition-colors"
               >
                 Retry
               </button>

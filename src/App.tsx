@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import OrderForm from './components/OrderForm';
+import AdminPanel from './components/AdminPanel';
 import whitePlainTshirt from './assets/images/white_plain_tshirt_1779533354809.png';
 import whiteCeramicMug from './assets/images/white_ceramic_mug_1779533374051.png';
 
@@ -152,6 +153,7 @@ export default function App() {
   const [cart, setCart] = React.useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = React.useState(false);
   const [isOrderFormOpen, setIsOrderFormOpen] = React.useState(false);
+  const [isAdminOpen, setIsAdminOpen] = React.useState(false);
   const [isDarkMode, setIsDarkMode] = React.useState(false);
   const [showToast, setShowToast] = React.useState(false);
   const [isBagAnimating, setIsBagAnimating] = React.useState(false);
@@ -260,10 +262,23 @@ export default function App() {
           <div className="hidden md:flex items-center gap-6 text-sm font-medium uppercase tracking-widest opacity-70">
             <a href="#shop" className="hover:opacity-100 transition-opacity">Shop</a>
             <a href="#customize" className="hover:opacity-100 transition-opacity">Customize</a>
+            <button 
+              onClick={() => setIsAdminOpen(true)}
+              className="hover:opacity-100 text-cyan-600 dark:text-cyan-400 font-bold tracking-widest transition-opacity cursor-pointer"
+            >
+              Review Queue ⚡
+            </button>
           </div>
         </div>
         
         <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setIsAdminOpen(true)}
+            className="px-4 py-2 text-[10px] font-bold font-mono tracking-widest rounded-full bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 flex items-center gap-1 cursor-pointer transition-colors"
+            title="Open Reviews Dashboard"
+          >
+            Review Queue ⚡
+          </button>
           <button 
             onClick={() => setIsDarkMode(!isDarkMode)}
             className="relative w-16 h-8 rounded-full p-1 transition-all duration-500 flex items-center cursor-pointer bg-brand-ink/10 border border-border overflow-hidden"
@@ -433,6 +448,87 @@ export default function App() {
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* How It Works Pipeline */}
+        <section className="py-24 px-6 border-y border-border/80 bg-brand-ink/5 dark:bg-brand-ink/65 transition-colors duration-300">
+          <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-16">
+              <span className="text-xs font-bold tracking-[0.3em] uppercase text-[#8e8d7a] dark:text-[#a6a593] mb-3 block">Fulfillment Blueprint</span>
+              <h2 className="text-4xl md:text-5xl font-serif">
+                How It Works: <span className="italic">Review & Dispatch Pipeline</span>
+              </h2>
+              <p className="text-sm opacity-60 max-w-lg mx-auto mt-4">
+                We bridge bespoke personal craftsmanship with automated high-velocity manufacturing. Seamlessly log custom design drafts, refine specifications, and sync instantly to Qikink.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {/* Step 1 */}
+              <div className="bg-surface border border-border/80 rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-shadow duration-300 relative group flex flex-col justify-between">
+                <div>
+                  <div className="w-12 h-12 rounded-2xl bg-brand-ink/5 dark:bg-white/5 flex items-center justify-center text-brand-accent font-mono font-bold text-sm mb-6">
+                    01
+                  </div>
+                  <h3 className="text-lg font-semibold mb-3">Formulate & Upload</h3>
+                  <p className="text-xs opacity-60 leading-relaxed">
+                    Select any premium aesthetic essential or upload your custom high-resolution canvas inside the Bespoke Studio.
+                  </p>
+                </div>
+                <div className="mt-6 flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider text-brand-ink/50 dark:text-white/40 group-hover:text-brand-accent transition-colors">
+                  Aesthetic Creation <ArrowRight size={10} />
+                </div>
+              </div>
+
+              {/* Step 2 */}
+              <div className="bg-surface border border-border/80 rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-shadow duration-300 relative group flex flex-col justify-between">
+                <div>
+                  <div className="w-12 h-12 rounded-2xl bg-brand-ink/5 dark:bg-white/5 flex items-center justify-center text-brand-accent font-mono font-bold text-sm mb-6">
+                    02
+                  </div>
+                  <h3 className="text-lg font-semibold mb-3">Secure Draft Entry</h3>
+                  <p className="text-xs opacity-60 leading-relaxed">
+                    Submit the form at checkout. Your shipping logistics, contact links, and custom artwork base64 specifications are logged as secure drafts.
+                  </p>
+                </div>
+                <div className="mt-6 flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider text-brand-ink/50 dark:text-white/40 group-hover:text-brand-accent transition-colors">
+                  Draft Logging <ArrowRight size={10} />
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="bg-surface border border-border/80 rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-shadow duration-300 relative group flex flex-col justify-between">
+                <div>
+                  <div className="w-12 h-12 rounded-2xl bg-brand-ink/5 dark:bg-white/5 flex items-center justify-center text-brand-accent font-mono font-bold text-sm mb-6">
+                    03
+                  </div>
+                  <h3 className="text-lg font-semibold mb-3">Verification & Refining</h3>
+                  <p className="text-xs opacity-60 leading-relaxed">
+                    Open the <span className="text-brand-accent font-bold">Review Queue</span> to examine active drafts. Modify customer information, correct postal pin-codes, or refine dimensions accurately.
+                  </p>
+                </div>
+                <div className="mt-6 flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-wider text-brand-ink/50 dark:text-white/40 group-hover:text-brand-accent transition-colors">
+                  Operator Control <ArrowRight size={10} />
+                </div>
+              </div>
+
+              {/* Step 4 */}
+              <div className="bg-surface border border-border/80 rounded-[2rem] p-8 shadow-sm hover:shadow-md transition-shadow duration-300 relative group flex flex-col justify-between">
+                <div>
+                  <div className="w-12 h-12 rounded-2xl bg-brand-ink/5 dark:bg-white/5 flex items-center justify-center text-brand-accent font-mono font-bold text-sm mb-6 animate-pulse">
+                    04
+                  </div>
+                  <h3 className="text-lg font-semibold mb-3">⚡ 1-Click Sync</h3>
+                  <p className="text-xs opacity-65 leading-relaxed">
+                    Once verified, dispatch with a single click. The backend authenticates with Qikink and registers the order into their Print-on-Demand system instantly.
+                  </p>
+                </div>
+                <div className="mt-6 flex items-center gap-1.5 text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                  LIVE DISPATCH INSTANTLY
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -758,6 +854,21 @@ export default function App() {
             onClose={() => setIsOrderFormOpen(false)} 
             selectedMainCategory={selectedMainCategory}
             mainUploadedFile={mainUploadedFile}
+            customImageBase64={customImage}
+            productColor={productColor}
+            customType={customType}
+            cartItems={cart}
+            cartTotal={cartTotal}
+            onOrderPlaced={() => setCart([])}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Admin Panel Review Modal */}
+      <AnimatePresence>
+        {isAdminOpen && (
+          <AdminPanel 
+            onClose={() => setIsAdminOpen(false)}
           />
         )}
       </AnimatePresence>
