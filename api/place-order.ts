@@ -91,15 +91,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let tokenData: any = null;
 
     const endpointsToTry = [
-      '/v2/oauth/token',
-      '/oauth/token',
-      '/v2/token',
+      '/api/v2/session-request',
+      '/api/v2/session',
+      '/api/v2/oauth/token',
+      '/api/v2/token',
       '/v2/session-request',
       '/v2/session',
+      '/v2/oauth/token',
+      '/v2/token',
+      '/api/session-request',
+      '/api/session',
+      '/api/oauth/token',
+      '/api/token',
       '/session-request',
       '/session',
+      '/oauth/token',
+      '/token',
       '/oauth2/token',
-      '/v2/oauth2/token'
+      '/v2/oauth2/token',
+      '/api/v2/oauth2/token'
     ];
 
     console.log("=== Initiating Deep Qikink Token Discovery/Authentication ===");
@@ -255,21 +265,58 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // We avoid passing non-numeric strings to product_id/variant_id to prevent WooCommerce/Shopify validation failures.
     const cleanLineItem = {
       title: itemOrdered || "AURA-001 Custom Apparel",
+      name: itemOrdered || "AURA-001 Custom Apparel",
       quantity: parseInt(String(quantity || 1), 10) || 1,
-      price: "0.00"
+      qty: parseInt(String(quantity || 1), 10) || 1,
+      price: "0.00",
+      sku: "AURA-001",
+      product_id: 1,
+      variant_id: 1
     };
 
     const qikinkOrderPayload = {
       order_number: `AURA_ORDER_${timestamp}`,
       order_id: `AURA_ORDER_${timestamp}`,
+      id: `AURA_ORDER_${timestamp}`,
+      
       name: nameStr,
+      first_name: first_name,
+      last_name: last_name,
       phone: phone,
       email: "guest@example.com",
       address: addrStr,
+      address_1: addressLine1,
+      address_2: addressLine2,
       city: city,
       state: state,
       pincode: pincode,
       payment_mode: "PREPAID",
+      
+      shipping: {
+        first_name: first_name,
+        last_name: last_name,
+        address_1: addressLine1,
+        address_2: addressLine2,
+        city: city,
+        state: state,
+        postcode: pincode,
+        country: "IN",
+        email: "guest@example.com",
+        phone: phone
+      },
+      billing: {
+        first_name: first_name,
+        last_name: last_name,
+        address_1: addressLine1,
+        address_2: addressLine2,
+        city: city,
+        state: state,
+        postcode: pincode,
+        country: "IN",
+        email: "guest@example.com",
+        phone: phone
+      },
+
       line_items: [cleanLineItem]
     };
 
@@ -295,32 +342,53 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log("Submitting order with mixed headers:", Object.keys(orderHeaders).filter(k => k.toLowerCase() !== 'x-client-secret' && k.toLowerCase() !== 'client_secret').join(', '));
 
-    // Set the single, absolute destination URL strictly to https://api.qikink.com/api/order
-    const targetUrl = "https://api.qikink.com/api/order";
-
     let orderSuccess = false;
     let finalOrderResponseText = "";
+    let detailedErrors: string[] = [];
 
-    try {
-      console.log(`[Order Creation] Attempting POST strictly to absolute URL: ${targetUrl}`);
-      const response = await fetch(targetUrl, {
-        method: 'POST',
-        headers: orderHeaders,
-        body: JSON.stringify(qikinkOrderPayload)
-      });
-      finalOrderResponseText = await response.text();
-      console.log(`[Order Attempt] Endpoint returned status ${response.status}: ${finalOrderResponseText}`);
+    const baseEndpoint = qikinkEndpoint.replace(/\/+$/, "");
+    const orderPaths = [
+      "/api/v2/orders",
+      "/api/v2/order",
+      "/api/orders",
+      "/api/order",
+      "/v2/orders",
+      "/v2/order",
+      "/orders",
+      "/order"
+    ];
 
-      if (response.ok) {
-        orderSuccess = true;
+    console.log(`=== Initiating Loop-based Qikink Order Submission across ${orderPaths.length} candidates ===`);
+
+    for (const path of orderPaths) {
+      const targetUrl = `${baseEndpoint}${path}`;
+      try {
+        console.log(`[Order Creation Match] Attempting POST to: ${targetUrl}`);
+        const response = await fetch(targetUrl, {
+          method: 'POST',
+          headers: orderHeaders,
+          body: JSON.stringify(qikinkOrderPayload)
+        });
+        
+        const responseText = await response.text();
+        console.log(`[Order Creation Response] ${targetUrl} returned status ${response.status}: ${responseText}`);
+
+        if (response.ok) {
+          orderSuccess = true;
+          finalOrderResponseText = responseText;
+          console.log(`[Success] Draft order placed successfully on: ${targetUrl}`);
+          break;
+        } else {
+          detailedErrors.push(`Endpoint ${path} failed with status ${response.status}: ${responseText.substring(0, 150)}`);
+        }
+      } catch (err: any) {
+        console.error(`Err on ${targetUrl}:`, err);
+        detailedErrors.push(`Endpoint ${path} exception: ${err?.message || String(err)}`);
       }
-    } catch (err: any) {
-      console.error(`Error attempting order post to ${targetUrl}:`, err);
-      throw new Error(`Qikink Order creation failed at absolute URL (${targetUrl}): ${err?.message || String(err)}`);
     }
 
     if (!orderSuccess) {
-      throw new Error(`Qikink Order creation failed at absolute URL (${targetUrl}). Response was: ${finalOrderResponseText}`);
+      throw new Error(`Qikink Order creation failed at all trial paths. Errors: \n${detailedErrors.join('\n')}`);
     }
 
     let qikinkResponseData: any = null;
